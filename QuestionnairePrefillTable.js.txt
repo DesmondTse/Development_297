@@ -1,0 +1,89 @@
+import React, { useEffect, useState, useRef, useContext, useMemo } from "react";
+import QuestionnaireCompareForm from "./QuestionnaireCompareForm"
+import {
+    Tabs,
+    TabList,
+    Tab,
+    TabPanels,
+    TabPanel
+} from "@chakra-ui/react";
+import { Utils } from "formiojs";
+import { Button } from "../../component/Button";
+
+export const QuestionnairePrefillTable = (props) => {
+    const { schema, formContent, locale, latestVersion } = props
+    const [hideCode, setHideCode] = useState(true)
+
+    const getSubForm = (schema) => {
+        let tempSchema = JSON.parse(JSON.stringify(schema))
+        let list = Utils.searchComponents(tempSchema.components, {
+            type: 'form'
+        })
+        return list
+    }
+
+    const getAllValuesByKey = (obj, key) => {
+        let result = []
+        if (Array.isArray(obj)) {
+            obj.forEach(item => {
+                result.push(...getAllValuesByKey(item, key))
+            })
+        } else if (typeof obj == 'object' && obj != null) {
+            Object.keys(obj).forEach(k => {
+                if (k == key) {
+                    result.push(JSON.parse(JSON.stringify(obj[k])))
+                } else {
+                    result.push(...getAllValuesByKey(obj[k], key))
+                }
+            })
+        }
+        return result
+    }
+
+    const subFormContent = useMemo(() => getSubForm(schema).map(form => ({
+        schema: form,
+        data: getAllValuesByKey(formContent, form.key),
+        name: form.name,
+    })), [formContent, schema])
+
+    const renderFormContent = useMemo(() => [
+        {
+            schema: schema,
+            data: formContent,
+            name: schema.name,
+            dataPrefill: schema.dataPrefill
+                .filter(item => item.FLD_TYP === "Q")
+                .map(item => item.FLD_NAME)
+        },
+        ...subFormContent,
+    ].filter(item => item.data.length != 0), [schema, formContent, subFormContent])
+    return (
+        <>
+            <Button variant='blue' onClick={() => setHideCode(c => !c)}>{hideCode ? 'Show' : 'Hide'} Question Codes</Button>
+            <Tabs>
+                <TabList>
+                    {renderFormContent.map((content, i) => (
+                        <Tab>{content.name}</Tab>
+                    ))}
+                </TabList>
+                <TabPanels>
+                    {renderFormContent.map(form => { 
+                        return (
+                        <TabPanel>
+                            <QuestionnaireCompareForm
+                                schema={form.schema}
+                                submissionArr={form.data}
+                                language={locale}
+                                latestVersion={latestVersion}
+                                hideCode={hideCode}
+                                dataPrefill={form.dataPrefill}
+                                isDataPrefill={true}
+                            />
+                        </TabPanel>
+                    )})
+                    }
+                </TabPanels>
+            </Tabs>
+        </>
+    )
+}

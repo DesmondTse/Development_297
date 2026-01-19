@@ -1,0 +1,185 @@
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { axios, getterConfig, setterConfig } from '../axiosDispatcher';
+
+const initialState = {
+    latestVersion: 0,
+    result: '',
+    drawerList: {
+        errList: [],
+        codingList: [],
+        FUList: [],
+        bypassList: [],
+        clearList: [],
+    },
+}
+
+export const cloneSubSurvey = createAsyncThunk(
+    'questionnaire/cloneSubSurvey',
+    async (payload, thunkAPI) => {
+        const res = await axios(setterConfig).post('/cloneSubSurvey', payload)
+        return res
+    }
+)
+
+export const saveSubmission = createAsyncThunk(
+    'questionnaire/saveSubmission',
+    async (payload, thunkAPI) => {
+        const res = await axios(setterConfig).post('/saveSubmission', payload)
+        return res
+    }
+)
+
+export const updateQuestionnaireState = createAsyncThunk(
+    'questionnaire/updateQuestionnaireState',
+    async (payload, thunkAPI) => {
+        return payload
+    }
+)
+
+export const getDataConflictListByStaffPositionUidByPage = createAsyncThunk(
+    'questionnaire/getDataConflictListByStaffPositionUidByPage',
+    async (payload, thunkAPI) => {
+        const res = await axios(getterConfig).post('/GetDataConflictListByStaffPositionUidByPage', payload)
+        return res
+    }
+)
+
+export const getDataConflictListByStaffPositionUidTotalCountByPageBasic = createAsyncThunk(
+    'questionnaire/getDataConflictListByStaffPositionUidTotalCountByPageBasic',
+    async (payload, thunkAPI) => {
+        const res = await axios(getterConfig).post('/GetDataConflictListByStaffPositionUidTotalCountByPageBasic', payload)
+        return res
+    }
+)
+
+export const getSubmissionByAssignmentUidAndVerNo = createAsyncThunk(
+    'questionnaire/getSubmissionByAssignmentUidAndVerNo',
+    async (payload, thunkAPI) => {
+        const res = await axios(getterConfig).post('/GetSubmissionByAssignmentUidAndVerNo', payload)
+        return res
+    }
+)
+
+export const updateFormVersion = createAsyncThunk(
+    'questionnaire/updateFormVersion',
+    async (payload, path, thunkAPI) => {
+        const res = await axios(setterConfig).put(`/${payload.path}`, payload.component)
+        return res
+    }
+)
+
+export const getDataConflictByAssignmentUid = createAsyncThunk(
+    'questionnaire/getDataConflictByAssignmentUid',
+    async (payload, thunkAPI) => {
+        const res = await axios(getterConfig).post('/GetDataConflictByAssignmentUid', payload)
+        return res
+    }
+)
+
+export const updateQuestionnaire = createAsyncThunk(
+    'questionnaire/updateQuestionnaire',
+    async (payload, thunkAPI) => {
+        const res = await axios(setterConfig).post('/UpdateQuestionnaire', payload)
+        return res
+    }
+)
+
+export const getValidationBySubmission = createAsyncThunk(
+    'questionnaire/getValidationBySubmission',
+    async (payload, thunkAPI) => {
+        const res = await axios(getterConfig).post('/GetValidationBySubmission', payload)
+        return res
+    }
+)
+
+export const getQuestionnaireForm = createAsyncThunk(
+    'questionnaire/ListAllForm',
+    async (payload, thunkAPI) => {
+        const res = await axios(getterConfig).post('/ListAllForm', payload)
+        return res
+    }
+)
+
+export const getQuestionnaireFormDetail = createAsyncThunk(
+    'questionnaire/formDetail',
+    async (payload, thunkAPI) => {
+        const res = await axios(getterConfig).get(`/form/${payload}`)
+        return res
+    }
+)
+
+export const getQuestionnaireFormName = createAsyncThunk(
+    'questionnaire/formName',
+    async (payload, thunkAPI) => {
+        const res = await axios(getterConfig).get(`/${payload.path}`)
+        return res
+    }
+)
+
+export const getFormInfoDetailByObjectId = createAsyncThunk(
+    'questionnaire/GetFormInfoDetailByObjectId',
+    async (payload, thunkAPI) => {
+        const res = await axios(getterConfig).post("/GetFormInfoDetailByObjectId", payload)
+        return res
+    }
+)
+
+export const insertSurvey = createAsyncThunk(
+    'questionnaire/updateSurvey',
+    async (payload, thunkAPI) => {
+        const res = await axios(setterConfig).post("/form", payload);
+        return res
+    }
+)
+
+
+export const updateQuestionnaireOptionList = createAsyncThunk(
+    "survey/UpdateQuestionnaireOptionList",
+    async (payload, thunkAPI) => {
+        const res = await axios(setterConfig).post("UpdateQuestionnaireOptionList", payload);
+        return res;
+    }
+);
+
+export const updateReameQuestionnaire = createAsyncThunk(
+    "questionnaire/UpdateReameQuestionnaire",
+    async (payload, thunkAPI) => {
+        const res = await axios(setterConfig).post("UpdateReameQuestionnaire", payload);
+        return res;
+    }
+);
+
+export const downloadRuleFileByRuleUid = createAsyncThunk(
+    "questionnaire/DownloadRuleFileByRuleUid",
+    async (payload, thunkAPI) => {
+        const res = await axios(setterConfig).post("DownloadRuleFileByRuleUid", payload);
+        return res;
+    }
+);
+
+const questionnaireSlice = createSlice({
+    name: 'questionnaire',
+    initialState,
+    reducers: {
+
+    },
+    extraReducers: (builder) => {
+        builder
+            .addCase(cloneSubSurvey.fulfilled, (state, action) => {
+
+            })
+            .addCase(saveSubmission.fulfilled, (state, action) => {
+
+            })
+            .addCase(updateQuestionnaireState.fulfilled, (state, action) => {
+                state[action.payload.key] = action.payload.value
+            })
+            .addCase(insertSurvey.fulfilled, (state, action) => {
+            })
+            .addCase(updateQuestionnaireOptionList.fulfilled, (state, action) => {
+            })
+    }
+})
+
+
+export default questionnaireSlice.reducer
