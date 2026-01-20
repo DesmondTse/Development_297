@@ -45,6 +45,7 @@ import { CURRENT_FCN_UID } from "../../features/axiosInterceptors";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { QuestionnairePreviewTable } from '../questionnaire/QuestionnairePreviewTable';
 import { QuestionnairePrefillTable } from '../questionnaire/QuestionnairePrefillTable';
+import { useSubmitVersionStructure } from '../../hooks/useSubmitVersionStructure';
 
 const getAllObjects = (input) => {
     const result = [];
@@ -574,149 +575,155 @@ function InterviewLog(props) {
         },
     ];
 
-    const submitVersionStructure = [
-        {
-            // header: 'Submit Version',
-            header: '',
-            inputType: 'custome',
-            key: '',
-            cell: (content) => (
-                <Checkbox isChecked={currentVersion == content.Q_DATA_VER_NO} isDisabled={!isOnline || (assignment.ASGN_STS != 'PE' && assignment.ASGN_STS != 'EIP' && assignment.ASGN_STS != 'QSR')} onChange={(e) => {
-                    setCurrentVersion(content.Q_DATA_VER_NO);
-                }} />
-            ),
-        },
-        {
-            header: 'Version',
-            inputType: 'text',
-            key: 'Q_DATA_VER_NO',
-        },
-        {
-            header: isDisplayDownload ? 'Download' : '',
-            inputType: isDisplayDownload ? 'custome' : 'none',
-            key: '',
-            cell: (content) => (
-                <Button
-                    variant={'blue'}
-                    onClick={() => downloadJSON(content)}
-                >
-                    Download JSON
-                </Button>
-            ),
-        },
-        {
-            header: 'Preview',
-            inputType: 'custome',
-            key: '',
-            cell: (content) => {
-                const submissionList = [assignment?.submission, assignment?.indoorSubmission, assignment?.followupSubmission, assignment?.fieldSubmission,];
-                const target = submissionList.filter((item) => item?.length).flat().find((item) => assignment.TEMP_DOC_REF_NO == item.Form_ID && item.Version == content.Q_DATA_VER_NO);
-                return (
-                    <Button
-                        variant={'blue'}
-                        onClick={() => navigatePreview(content)}
-                        isDisabled={!isOnline && !target}
-                    >
-                        Preview
-                    </Button>
-                );
-            },
-        },
-        {
-            header: 'Review',
-            inputType: 'custome',
-            key: '',
-            cell: (content) =>
-                content.Q_DATA_TYP != "RAWA" && (content.RVW_STS == 'P' || content.RVW_STS == 'D' ) && [...(assignment.AssignmentDetailObject?.[0].OfficerList ?? []), ...(assignment.AssignmentDetailObject?.[0].SupervisorList ?? []),].some((item) => item.STF_POSN_UID == tokenDecoder().stf_position) && (
-                    <Button variant={'yellow'} onClick={() => navigateDataConflict(content)} >
-                        Review
-                    </Button>
-                ),
-        },
-        {
-            header: 'Compare Pre-filled',
-            inputType: 'custome',
-            key: '',
-            cell: (content) => {
-                const submissionList = [assignment?.submission, assignment?.indoorSubmission, assignment?.followupSubmission, assignment?.fieldSubmission]
-                const target = submissionList.filter(item => item?.length).flat().find(item => assignment.TEMP_DOC_REF_NO == item.Form_ID && item.Version == content.Q_DATA_VER_NO)
-                return assignment?.lastRoundSubmission?.length > 0 && <Button
-                            variant={'blue'}
-                            onClick={() => navigatePrefill(content,true)}
-                            isDisabled={!isOnline && !target}
-                        >
-                            Compare
-                        </Button>
-            },
-        },
-        {
-            header: "Questionnaire Data Type",
-            inputType: "text-select",
-            key: "Q_DATA_TYP",
-            contentKey: "Q_DATA_TYP",
-            targetKey: "value",
-            displayKey: "label",
-            list: questionnaireDataTypeList,
-        },
-        {
-            header: 'Data Conflict Status',
-            inputType: 'text',
-            key: 'DF_STS_DESCR',
-        },
-        {
-            header: 'Complete/Partial',
-            inputType: 'text-select',
-            key: 'Q_DATA_STS',
-            contentKey: 'Q_DATA_STS',
-            targetKey: 'value',
-            displayKey: 'label',
-            list: questionnaireDataStatusList,
-        },
-        {
-            header: 'Enum Mode',
-            inputType: 'text-select',
-            key: 'ENUM_MDE',
-            contentKey: 'ENUM_MDE',
-            targetKey: 'value',
-            displayKey: 'label',
-            list: EnumerationModesList.map(item => item.value === "P" ? { value: item.value, label: null } : item)
-        },
-        {
-            header: 'Created By',
-            inputType: 'text',
-            key: 'CRE_BY',
-        },
-        {
-            header: 'Create Time',
-            inputType: 'text-date-time',
-            key: 'CRE_DT',
-        },
-        {
-            header: 'Review Status',
-            inputType: 'text',
-            key: 'RVW_STS_DESCR',
-        },
-        {
-            header: 'Review By',
-            inputType: 'text',
-            key: 'RVW_BY_STF_NAME_ENG',
-        },
-        {
-            header: 'Review Time',
-            inputType: 'text-date',
-            key: 'RVW_DT',
-        },
-        {
-            header: 'Updated By',
-            inputType: 'text',
-            key: 'UPD_BY',
-        },
-        {
-            header: 'Updated Time',
-            inputType: 'text-date-time',
-            key: 'UPD_DT',
-        },
-    ];
+    /** code moved to the bottom 8706 */
+    // const submitVersionStructure = [
+    //     {
+    //         // header: 'Submit Version',
+    //         header: '',
+    //         inputType: 'custome',
+    //         key: '',
+    //         cell: (content) => (
+    //             <Checkbox isChecked={currentVersion == content.Q_DATA_VER_NO} isDisabled={!isOnline || (assignment.ASGN_STS != 'PE' && assignment.ASGN_STS != 'EIP' && assignment.ASGN_STS != 'QSR')} onChange={(e) => {
+    //                 setCurrentVersion(content.Q_DATA_VER_NO);
+    //             }} />
+    //         ),
+    //     },
+    //     {
+    //         header: 'Version',
+    //         inputType: 'text',
+    //         key: 'Q_DATA_VER_NO',
+    //     },
+    //     {
+    //         header: isDisplayDownload ? 'Download' : '',
+    //         inputType: isDisplayDownload ? 'custome' : 'none',
+    //         key: '',
+    //         cell: (content) => (
+    //             <Button
+    //                 variant={'blue'}
+    //                 onClick={() => downloadJSON(content)}
+    //             >
+    //                 Download JSON
+    //             </Button>
+    //         ),
+    //     },
+    //     {
+    //         header: 'Preview',
+    //         inputType: 'custome',
+    //         key: '',
+    //         cell: (content) => {
+    //             const submissionList = [assignment?.submission, assignment?.indoorSubmission, assignment?.followupSubmission, assignment?.fieldSubmission,];
+    //             const target = submissionList.filter((item) => item?.length).flat().find((item) => assignment.TEMP_DOC_REF_NO == item.Form_ID && item.Version == content.Q_DATA_VER_NO);
+    //             return (
+    //                 <Button
+    //                     variant={'blue'}
+    //                     onClick={() => navigatePreview(content)}
+    //                     isDisabled={!isOnline && !target}
+    //                 >
+    //                     Preview
+    //                 </Button>
+    //             );
+    //         },
+    //     },
+    //     {
+    //         header: 'Review',
+    //         inputType: 'custome',
+    //         key: '',
+    //         cell: (content) =>
+    //             content.Q_DATA_TYP != "RAWA" && (content.RVW_STS == 'P' || content.RVW_STS == 'D' ) && [...(assignment.AssignmentDetailObject?.[0].OfficerList ?? []), ...(assignment.AssignmentDetailObject?.[0].SupervisorList ?? []),].some((item) => item.STF_POSN_UID == tokenDecoder().stf_position) && (
+    //                 <Button variant={'yellow'} onClick={() => navigateDataConflict(content)} >
+    //                     Review
+    //                 </Button>
+    //             ),
+    //     },
+    //     {
+    //         header: 'Compare Pre-filled',
+    //         inputType: 'custome',
+    //         key: '',
+    //         cell: (content) => {
+    //             const submissionList = [assignment?.submission, assignment?.indoorSubmission, assignment?.followupSubmission, assignment?.fieldSubmission]
+    //             const target = submissionList.filter(item => item?.length).flat().find(item => assignment.TEMP_DOC_REF_NO == item.Form_ID && item.Version == content.Q_DATA_VER_NO)
+    //             return assignment?.lastRoundSubmission?.length > 0 && <Button
+    //                         variant={'blue'}
+    //                         onClick={() => navigatePrefill(content,true)}
+    //                         isDisabled={!isOnline && !target}
+    //                     >
+    //                         Compare
+    //                     </Button>
+    //         },
+    //     },
+    //     {
+    //         header: "Questionnaire Data Type",
+    //         inputType: "text-select",
+    //         key: "Q_DATA_TYP",
+    //         contentKey: "Q_DATA_TYP",
+    //         targetKey: "value",
+    //         displayKey: "label",
+    //         list: questionnaireDataTypeList,
+    //     },
+    //     {
+    //         header: 'Data Conflict Status',
+    //         inputType: 'text',
+    //         key: 'DF_STS_DESCR',
+    //     },
+    //     {
+    //         header: 'Complete/Partial',
+    //         inputType: 'text-select',
+    //         key: 'Q_DATA_STS',
+    //         contentKey: 'Q_DATA_STS',
+    //         targetKey: 'value',
+    //         displayKey: 'label',
+    //         list: questionnaireDataStatusList,
+    //     },
+    //     {
+    //         header: 'Enum Mode',
+    //         inputType: 'text-select',
+    //         key: 'ENUM_MDE',
+    //         contentKey: 'ENUM_MDE',
+    //         targetKey: 'value',
+    //         displayKey: 'label',
+    //         list: EnumerationModesList.map(item => item.value === "P" ? { value: item.value, label: null } : item)
+    //     },
+    //     {
+    //         header: 'Created By',
+    //         inputType: 'text',
+    //         key: 'CRE_BY',
+    //     },
+    //     {
+    //         header: 'Create Time',
+    //         inputType: 'text-date-time',
+    //         key: 'CRE_DT',
+    //     },
+    //     {
+    //         header: 'Review Status',
+    //         inputType: 'text',
+    //         key: 'RVW_STS_DESCR',
+    //     },
+    //     {
+    //         header: 'Review By',
+    //         inputType: 'text',
+    //         key: 'RVW_BY_STF_NAME_ENG',
+    //     },
+    //     {
+    //         header: 'Review Time',
+    //         inputType: 'text-date',
+    //         key: 'RVW_DT',
+    //     },
+    //     {
+    //         header: 'Updated By',
+    //         inputType: 'text',
+    //         key: 'UPD_BY',
+    //     },
+    //     {
+    //         header: 'Updated Time',
+    //         inputType: 'text-date-time',
+    //         key: 'UPD_DT',
+    //     },
+    // ];
+
+
+
+
+
 
     const imageDetailDataFormStructure = [
         {
@@ -2101,6 +2108,7 @@ function InterviewLog(props) {
         }));
     };
 
+
     const saveSubmissionVersion = async () => {
         const selected = SubmissionVersionObject.find(
             (item) => item.Q_DATA_VER_NO == currentVersion
@@ -2125,20 +2133,6 @@ function InterviewLog(props) {
         dispatch(triggerFetch());
     };
 
-    //     function convertSubmissionFormat(submission){
-    //         console.log("submission",submission)
-    //     let clomeSubmission = deepClone(submission.length > 0? submission[0]: submission)
-    //         if(clomeSubmission.form1 && clomeSubmission.form1.PPTContainer && clomeSubmission.form1.PPTContainer.PPT && clomeSubmission.form1.PPTContainer.PPT.length > 0){
-    //             clomeSubmission.form1.PPTContainer.PPT.forEach(item => {
-    //                 if (item.Q4CODINGLOCATION2 && item.Q4CODINGLOCATION2.length === 1 && parseInt(item.Q4CODINGLOCATION2, 10) >= 1 && parseInt(item.Q4CODINGLOCATION2, 10) <= 9) {
-    //                     item.Q4CODINGLOCATION2 = "0" + item.Q4CODINGLOCATION2;
-    //                 }
-    //             });
-    //         }
-    //         console.log("clomeSubmission",submission.length > 0? [clomeSubmission]: clomeSubmission)
-    //         return submission.length > 0? [clomeSubmission]: clomeSubmission;
-    // }
-
     function deepClone(obj) {
         // Check if the input is an object or array, otherwise return the value
         if (obj === null || typeof obj !== 'object') {
@@ -2157,6 +2151,22 @@ function InterviewLog(props) {
 
         return clone;
     }
+
+    /** mantis 8706 */
+    const submitVersionStructure = useSubmitVersionStructure({
+        currentVersion, setCurrentVersion,
+        isDisplayDownload, setIsDisplayDownload,
+        downloadJSON: downloadJSON,
+        navigatePreview: navigatePreview,
+        navigateDataConflict: navigateDataConflict,
+        navigatePrefill: navigatePrefill,
+        isOnline,
+        assignment,
+        questionnaireDataTypeList,
+        questionnaireDataStatusList,
+        EnumerationModesList,
+    });
+
 
     // console.log('[assignment]', assignment)
     // console.log('[assignment]count', assignment?.InterviewLogListObject?.filter(interviewLog=> interviewLog.STF_UID == user.id && interviewLog.END_DT == null).length )
