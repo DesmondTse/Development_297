@@ -4,25 +4,19 @@ import { Button, Checkbox, Box, Tooltip } from '@chakra-ui/react';
 import { tokenDecoder } from '../utils/networkUtils';
 
 export const useSubmitVersionStructure = ({
-  // 必填：checkbox 相關
   currentVersion, setCurrentVersion,
   isDisplayDownload, setIsDisplayDownload,
- 
-  // 其他動作 handler
   downloadJSON,
   navigatePreview,
   navigateDataConflict,
   navigatePrefill,
 
-  // 上下文 props
   isOnline = true,
   assignment = {},
   questionnaireDataTypeList = [],
   questionnaireDataStatusList = [],
   EnumerationModesList = [],
 
-  // 可選：唯讀模式（QuickView 常用）
-  readOnly = false,
 } = {}) => {
   return useMemo(() => [
     {
@@ -175,6 +169,5 @@ export const useSubmitVersionStructure = ({
     questionnaireDataTypeList,
     questionnaireDataStatusList,
     EnumerationModesList,
-    readOnly,
   ]);
 };

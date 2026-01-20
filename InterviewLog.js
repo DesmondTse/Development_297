@@ -45,7 +45,10 @@ import { CURRENT_FCN_UID } from "../../features/axiosInterceptors";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { QuestionnairePreviewTable } from '../questionnaire/QuestionnairePreviewTable';
 import { QuestionnairePrefillTable } from '../questionnaire/QuestionnairePrefillTable';
+
+/** 8706 */
 import { useSubmitVersionStructure } from '../../hooks/useSubmitVersionStructure';
+import { useQuestionnaireHandlers } from '../../hooks/useQuestionnaireHandlers';
 
 const getAllObjects = (input) => {
     const result = [];
@@ -720,11 +723,6 @@ function InterviewLog(props) {
     //     },
     // ];
 
-
-
-
-
-
     const imageDetailDataFormStructure = [
         {
             inputType: 'image',
@@ -845,20 +843,6 @@ function InterviewLog(props) {
                 }, null)
 
                 setLatestEndLog(latestEndLog)
-                // latestLog = props.assignment.InterviewLogListObject?.reduce((prev, curr) => {
-                //     if (!curr.END_DT_SYS) return prev
-                //     if (!prev?.END_DT_SYS) return curr
-                //     return moment(curr.END_DT_SYS).isAfter(moment(prev.END_DT_SYS)) ? curr : prev
-                // }, null)
-                //
-                // latestEndLog = props.assignment.InterviewLogListObject?.reduce((prev, curr) => {
-                //     if (!curr.STRT_DT_SYS) return prev
-                //     if (!prev?.STRT_DT_SYS) return curr
-                //     return moment(curr.STRT_DT_SYS).isAfter(moment(prev.STRT_DT_SYS)) ? curr : prev
-                // }, null)
-
-                //console.log('[debug] latestLog', latestLog)
-                //latestContact = contactList.find(item => item.GUID == latestLog?.HH_CONT_GUID)
                 latestContact = contactList.find(item => item.GUID == latestEndLog?.HH_CONT_GUID)
             }
             
@@ -1659,22 +1643,6 @@ function InterviewLog(props) {
     };
 
     const submitNewAssignment = async () => {
-        // if (newAssignmentContent.pAssignmentType == 'ATT' && newAssignmentContent.pNewAssignmentList.some(item => !item.QTR_TYP_CD || item.QTR_TYP_CD == '')) {
-        //     setAlertContent({
-        //         isOpen: true,
-        //         title: 'Warning',
-        //         msg: 'Please select quarter type for all new assignments.',
-        //         onClose: () => {
-        //             setAlertContent({
-        //                 isOpen: false,
-        //                 msg: '',
-        //                 onClose: null
-        //             })
-        //         }
-        //     });
-        //     return
-        // }
-
         await createNewAssignment(assignment.GUID, {}, newAssignmentContent, dispatch);
         setNewAssignmentContent({
             isOpen: false,
@@ -1703,6 +1671,21 @@ function InterviewLog(props) {
         }));
     };
 
+    /** mantis 8706 */
+    const { downloadJSON, navigatePreview, navigateDataConflict, navigatePrefill } = useQuestionnaireHandlers({
+        assignment: assignment,
+        formIOSchema: formIOSchema,
+        lastRoundData: lastRoundData,
+        setFormSchema: setFormSchema,
+        setAlertContent: setAlertContent,
+        setPrefillSchema: setPrefillSchema,
+        setPrefillFormContent: setPrefillFormContent,
+        setPrefillLocale: setPrefillLocale,
+        setPrefillLatestVersion: setPrefillLatestVersion,
+        setVerifyDetail: setVerifyDetail
+    })
+
+    /*
     const navigatePrefill = async (content, isCompare) => {
         setFormSchema(formIOSchema);
         if (!formIOSchema) {
@@ -1783,54 +1766,6 @@ function InterviewLog(props) {
                 });
             });
         }
-        // await dispatch(updateQuestionnaireState({
-        //     key: 'info',
-        //     value: {
-        //         // schema: [{
-        //         //     ...formIOSchema,
-        //         //     GUID: assignment.TEMP_DOC_REF_NO + '_' + assignment.TMPL_VLD_VER_NO,
-        //         // }],
-        //         option: {
-        //             language: 'zh',
-        //             i18n: {
-        //                 zh: {
-        //                     ...zhList
-        //                 },
-        //                 en: {
-        //                     ...engList
-        //                 }
-        //             },
-        //             buttonSettings: { showSubmit: false, showCancel: false },
-        //             alwaysDirty: true,
-        //             readOnly: true,
-        //             showHiddenFields: true,
-        //         },
-        //         // assignment: { ...assignment, INTV_MDE: localState.INTV_MDE },
-        //         submission: Submission_FormIo_Obj,
-        //         errList: errList,
-        //         followUpList: followUpList,
-        //         formGUID: assignment.TEMP_DOC_REF_NO + '_' + assignment.TMPL_VLD_VER_NO,
-        //         date: {
-        //             YYYY: assignment.YYYY,
-        //             MM: assignment.MM,
-        //         },
-        //     }
-        // }))
-
-        // await dispatch(updateQuestionnaireState({
-        //     key: 'drawerList',
-        //     value: {
-        //         errCodingList: submission?.flatMap(sub => sub.Submission_Error ? JSON.parse(sub.Submission_Error) : []) ?? [],
-        //         FUList: submission?.flatMap(sub => sub.Submission_FollowUp ? JSON.parse(sub.Submission_FollowUp) : []) ?? [],
-        //         bypassList: submission?.flatMap(sub => sub.Submission_ByPass ? JSON.parse(sub.Submission_ByPass) : []) ?? [],
-        //         clearList: submission?.flatMap(sub => sub.Submission_Cleared ? JSON.parse(sub.Submission_Cleared) : []) ?? [],
-        //     }
-        // }))
-
-        // await dispatch(updateQuestionnaireState({
-        //     key: 'latestVersion',
-        //     value: content.Q_DATA_VER_NO - 1
-        // }))
 
         const info = {
             option: {
@@ -1873,16 +1808,6 @@ function InterviewLog(props) {
         setPrefillSchema(info.schema[0])
         const prefillSubmission = info.submission[0] || info.submission
 
-        // if (Array.isArray(prefillSubmission)) {
-        //     setPrefillFormContent(prefillSubmission)
-        // }
-        // else if (typeof prefillSubmission == 'object' && prefillSubmission != null) {
-        //     setPrefillFormContent([prefillSubmission])
-        // }
-        // else {
-        //     setPrefillFormContent([])
-        // }
-
         setPrefillFormContent(c => {
             let temp=[] ;
            // temp = [...c];
@@ -1913,7 +1838,6 @@ function InterviewLog(props) {
 
         setVerifyDetail(true)
     }
-
 
     const navigatePreview = async (content) => {
         setFormSchema(formIOSchema);
@@ -2090,6 +2014,7 @@ function InterviewLog(props) {
             },
         });
     };
+    */
 
     const onClickViewImageList = (id) => {
         const targetInterviewLog = tableContent.find((item) => item.GUID == id);
