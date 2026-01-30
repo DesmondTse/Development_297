@@ -1,13 +1,3 @@
-USE [CDM_DEV2]
-GO
-
-/****** Object:  StoredProcedure [Census].[SP_CM_SET_ASGN_MAIN]    Script Date: 29/01/2026 3:38:35 PM ******/
-SET ANSI_NULLS ON
-GO
-
-SET QUOTED_IDENTIFIER ON
-GO
-
 ALTER   PROCEDURE [Census].[SP_CM_SET_ASGN_MAIN]
 (
     @pBaseJson        nvarchar(max),
@@ -632,13 +622,6 @@ BEGIN
 
 			--ErrorMsg Handling
 			SET @pErrMsg = CONCAT('(', @sErrorNum, ') ', @sCatchErrorMessage)
-			--IF (@pErrCode > 50000 AND @sErrorNum <> 50000)SET @pErrCode = @sErrorNum
-			--EXEC util.SetErrMsg 			
-			--		@pErrCode = @pErrCode,			-- int
-			--		@pErrMsg = @pErrMsg OUTPUT		-- nvarchar(400)
-
-   --         -- Write Log
-   --         EXEC [util].[WriteErrorLog] @sProcedureName, @pErrMsg, @sRtnCodeLog OUTPUT, @sErrMessageLog OUTPUT
         END
         ELSE
             THROW
@@ -650,4 +633,5 @@ BEGIN
     DROP TABLE IF EXISTS #sDataSet_SetCM_ASGN_MAIN
 END
 GO
+
 
