@@ -18,6 +18,21 @@ BEGIN
 	   SET FMTONLY OFF
 	END
 
+	-- 添加调试代码
+    DECLARE @DebugMode bit = 1; -- 调试开关，1=启用，0=禁用
+    DECLARE @DebugUserID varchar(20) = 'SYSTEM';
+    DECLARE @DebugMessage nvarchar(1000);
+
+  IF @DebugMode = 1
+    BEGIN
+        
+        SET @DebugMessage = N'SP_DC_UPDATE_INTV_LOG开始执行';
+        INSERT INTO [Census].[DEBUG_LOG] 
+            (PROCEDURE_NAME, LOG_LEVEL, LOG_MESSAGE, CREATED_DATE, USER_ID, STF_POSN_UID, ADDITIONAL_DATA)
+        VALUES 
+            ('SP_DC_UPDATE_INTV_LOG', 'INFO', @DebugMessage, GETDATE(), @DebugUserID, NULL, 
+             CONCAT(N'输入JSON长度:', LEN(@pJson)));
+    END
 
 	DECLARE @sBeginTranCount int = 0,
 			@sTestMode	     int = 0,
@@ -40,6 +55,17 @@ BEGIN
 			FROM #BaseJsonDataTable b
         END
 		
+		-- 记录temp表数据
+        IF @DebugMode = 1
+        BEGIN
+            SET @DebugMessage = N'开始处理输入JSON';
+            INSERT INTO [Census].[DEBUG_LOG] 
+                (PROCEDURE_NAME, LOG_LEVEL, LOG_MESSAGE, CREATED_DATE, USER_ID, STF_POSN_UID, ADDITIONAL_DATA)
+            VALUES 
+                ('SP_DC_UPDATE_INTV_LOG', 'DEBUG', @DebugMessage, GETDATE(), @DebugUserID, NULL, 
+                 CONCAT(N'输入JSON前500字符:', LEFT(@pJson, 500)));
+        END
+
 		SELECT *
 		INTO #temp
 		FROM
@@ -81,6 +107,33 @@ BEGIN
 			RecordState varchar(1)
 		)
 
+		 -- 记录temp表内容
+        IF @DebugMode = 1
+        BEGIN
+            DECLARE @TempRecordCount int = (SELECT COUNT(*) FROM #temp);
+            DECLARE @TempData nvarchar(max);
+            
+            SELECT @TempData = (
+                SELECT 
+                    [INTV_LOG_UID],
+                    [ASGN_UID],
+                    [ENUM_RSLT_CD],
+                    [INTV_SESS],
+                    [INTV_MDE],
+                    [RecordState],
+                    [UpdateAsgnMainEnumRsltCd]
+                FROM #temp
+                FOR JSON PATH
+            );
+            
+            SET @DebugMessage = CONCAT(N'temp表记录数: ', @TempRecordCount);
+            INSERT INTO [Census].[DEBUG_LOG] 
+                (PROCEDURE_NAME, LOG_LEVEL, LOG_MESSAGE, CREATED_DATE, USER_ID, STF_POSN_UID, ADDITIONAL_DATA)
+            VALUES 
+                ('SP_DC_UPDATE_INTV_LOG', 'DEBUG', @DebugMessage, GETDATE(), @DebugUserID, NULL, 
+                 CONCAT(N'temp表数据:', @TempData));
+        END
+
 		--Find the [INTV_LOG_UID] by GUID for [CM_INTV_LOG]
 		IF EXISTS(SELECT 1 FROM #temp WHERE [Census].[FN_IntIsNullOrZero]([INTV_LOG_UID]) = 0)
 		BEGIN
@@ -111,6 +164,32 @@ BEGIN
 			set @pJson = (SELECT * FROM #temp FOR JSON AUTO)
 		END
 
+        -- 记录NC更新条件判断
+        IF @DebugMode = 1 AND EXISTS (
+            SELECT 1
+            FROM #TEMP
+            OUTER APPLY (
+                SELECT TOP 1 END_DT
+                FROM CENSUS.CM_INTV_LOG WITH (NOLOCK)
+                WHERE ASGN_UID = #TEMP.ASGN_UID
+                ORDER BY END_DT DESC
+            ) AS LatestLog
+            WHERE
+                ISNULL([ENUM_RSLT_CD],'') != ''
+                AND (
+                    #TEMP.END_DT >= LatestLog.END_DT
+                    OR LatestLog.END_DT IS NULL
+                )
+        )
+        BEGIN
+            SET @DebugMessage = N'进入NC更新逻辑块（更新现有记录）';
+            INSERT INTO [Census].[DEBUG_LOG] 
+                (PROCEDURE_NAME, LOG_LEVEL, LOG_MESSAGE, CREATED_DATE, USER_ID, STF_POSN_UID, ADDITIONAL_DATA)
+            VALUES 
+                ('SP_DC_UPDATE_INTV_LOG', 'DEBUG', @DebugMessage, GETDATE(), @DebugUserID, NULL, 
+                 N'条件满足，将更新NC计数');
+        END
+
 		IF EXISTS (
 			SELECT 1
 			FROM #TEMP
@@ -131,6 +210,35 @@ BEGIN
 		)
 		BEGIN
 					
+			-- 记录当前的NC计数
+            IF @DebugMode = 1
+            BEGIN
+                DECLARE @CurrentCounts nvarchar(max) = (
+                    SELECT 
+                        asgn.[ASGN_UID],
+                        asgn.[NCD_FC_SUM],
+                        asgn.[NCD_CSC_SUM],
+                        asgn.[NCN_FC_SUM],
+                        asgn.[NCN_CSC_SUM],
+                        temp.[ENUM_RSLT_CD] as NewEnumRsltCd,
+                        intvLog.[ENUM_RSLT_CD] as OldEnumRsltCd
+                    FROM #temp temp
+                    LEFT JOIN [Census].[CM_INTV_LOG] intvLog WITH (NOLOCK) 
+                        ON temp.[INTV_LOG_UID] = intvLog.[INTV_LOG_UID]
+                    LEFT JOIN [Census].[CM_ASGN_MAIN] asgn WITH (NOLOCK) 
+                        ON asgn.[ASGN_UID] = ISNULL(temp.[ASGN_UID], intvLog.[ASGN_UID])
+                    WHERE temp.[ENUM_RSLT_CD] IS NOT NULL
+                    FOR JSON PATH
+                );
+                
+                SET @DebugMessage = N'更新前NC计数';
+                INSERT INTO [Census].[DEBUG_LOG] 
+                    (PROCEDURE_NAME, LOG_LEVEL, LOG_MESSAGE, CREATED_DATE, USER_ID, STF_POSN_UID, ADDITIONAL_DATA)
+                VALUES 
+                    ('SP_DC_UPDATE_INTV_LOG', 'DEBUG', @DebugMessage, GETDATE(), @DebugUserID, NULL, 
+                     CONCAT(N'当前计数:', @CurrentCounts));
+            END
+
 			DECLARE @sAsgnMainEnumRsltJson nvarchar(max) = (
 				SELECT ISNULL(intvLog.[ASGN_UID], #temp.[ASGN_UID]) [ASGN_UID],
 					CASE
@@ -192,12 +300,76 @@ BEGIN
 				FOR JSON PATH
 			)
 
+			-- 记录将要更新的JSON
+			IF @DebugMode = 1
+			BEGIN
+				SET @DebugMessage = N'生成的更新JSON';
+				INSERT INTO [Census].[DEBUG_LOG] 
+					(PROCEDURE_NAME, LOG_LEVEL, LOG_MESSAGE, CREATED_DATE, USER_ID, STF_POSN_UID, ADDITIONAL_DATA)
+				VALUES 
+					('SP_DC_UPDATE_INTV_LOG', 'DEBUG', @DebugMessage, GETDATE(), @DebugUserID, NULL, 
+						CONCAT(N'更新JSON:', LEFT(@sAsgnMainEnumRsltJson, 1000)));
+			END
+
 			exec census.SP_CM_SET_ASGN_MAIN @pBaseJson, @sAsgnMainEnumRsltJson, @pResultJson OUTPUT, @pErrCode OUTPUT, @pErrMsg OUTPUT;
 
+            -- 记录更新结果
+            IF @DebugMode = 1
+            BEGIN
+                SET @DebugMessage = CONCAT(N'更新结果: 错误码=', @pErrCode, N' 错误信息=', @pErrMsg);
+                INSERT INTO [Census].[DEBUG_LOG] 
+                    (PROCEDURE_NAME, LOG_LEVEL, LOG_MESSAGE, CREATED_DATE, USER_ID, STF_POSN_UID, ADDITIONAL_DATA)
+                VALUES 
+                    ('SP_DC_UPDATE_INTV_LOG', 'DEBUG', @DebugMessage, GETDATE(), @DebugUserID, NULL, 
+                     CONCAT(N'结果JSON:', LEFT(@pResultJson, 500)));
+            END
 		END
+
+        -- 记录删除逻辑
+        IF @DebugMode = 1 AND EXISTS (SELECT 1 FROM #temp WHERE [RecordState] = 'D')
+        BEGIN
+            SET @DebugMessage = N'进入删除记录逻辑块';
+            INSERT INTO [Census].[DEBUG_LOG] 
+                (PROCEDURE_NAME, LOG_LEVEL, LOG_MESSAGE, CREATED_DATE, USER_ID, STF_POSN_UID, ADDITIONAL_DATA)
+            VALUES 
+                ('SP_DC_UPDATE_INTV_LOG', 'DEBUG', @DebugMessage, GETDATE(), @DebugUserID, NULL, 
+                 N'将处理删除的NC记录');
+        END
 
 		IF EXISTS (SELECT 1 FROM #temp WHERE [RecordState] = 'D')
 		BEGIN
+
+			-- 记录删除前的计数
+            IF @DebugMode = 1
+            BEGIN
+                DECLARE @DeleteCounts nvarchar(max) = (
+                    SELECT 
+                        asgn.[ASGN_UID],
+                        asgn.[NCD_FC_SUM],
+                        asgn.[NCD_CSC_SUM],
+                        asgn.[NCN_FC_SUM],
+                        asgn.[NCN_CSC_SUM],
+                        intvLog.[INTV_SESS],
+                        intvLog.[INTV_MDE],
+                        intvLog.[ENUM_RSLT_CD]
+                    FROM #temp 
+                    INNER JOIN [Census].[CM_INTV_LOG] intvLog WITH (NOLOCK) 
+                        ON intvLog.[INTV_LOG_UID] = #temp.[INTV_LOG_UID] 
+                        AND intvLog.[ENUM_RSLT_CD] = 'NC'
+                    INNER JOIN [Census].[CM_ASGN_MAIN] asgn WITH (NOLOCK) 
+                        ON asgn.[ASGN_UID] = intvLog.[ASGN_UID]
+                    WHERE [RecordState] = 'D'
+                    FOR JSON PATH
+                );
+                
+                SET @DebugMessage = N'删除前的NC计数';
+                INSERT INTO [Census].[DEBUG_LOG] 
+                    (PROCEDURE_NAME, LOG_LEVEL, LOG_MESSAGE, CREATED_DATE, USER_ID, STF_POSN_UID, ADDITIONAL_DATA)
+                VALUES 
+                    ('SP_DC_UPDATE_INTV_LOG', 'DEBUG', @DebugMessage, GETDATE(), @DebugUserID, NULL, 
+                     CONCAT(N'删除计数:', @DeleteCounts));
+            END
+
 			DECLARE @sAsgnMainJson nvarchar(max) = (
 				SELECT asgn.[ASGN_UID],
 					   CASE WHEN intvLog.[INTV_SESS] = 'EV' AND intvLog.[INTV_MDE] in ('TI(out)', 'TI(in)') THEN asgn.[NCN_CSC_SUM] - 1 ELSE NULL END AS [NCN_CSC_SUM],
@@ -212,7 +384,30 @@ BEGIN
 				FOR JSON PATH
 			)
 
+			-- 记录删除更新JSON
+            IF @DebugMode = 1
+            BEGIN
+                SET @DebugMessage = N'生成的删除更新JSON';
+                INSERT INTO [Census].[DEBUG_LOG] 
+                    (PROCEDURE_NAME, LOG_LEVEL, LOG_MESSAGE, CREATED_DATE, USER_ID, STF_POSN_UID, ADDITIONAL_DATA)
+                VALUES 
+                    ('SP_DC_UPDATE_INTV_LOG', 'DEBUG', @DebugMessage, GETDATE(), @DebugUserID, NULL, 
+                     CONCAT(N'删除更新JSON:', LEFT(@sAsgnMainJson, 1000)));
+            END
+
 			exec census.SP_CM_SET_ASGN_MAIN @pBaseJson, @sAsgnMainJson, @pResultJson OUTPUT, @pErrCode OUTPUT, @pErrMsg OUTPUT;
+
+            -- 记录删除结果
+            IF @DebugMode = 1
+            BEGIN
+                SET @DebugMessage = CONCAT(N'删除更新结果: 错误码=', @pErrCode, N' 错误信息=', @pErrMsg);
+                INSERT INTO [Census].[DEBUG_LOG] 
+                    (PROCEDURE_NAME, LOG_LEVEL, LOG_MESSAGE, CREATED_DATE, USER_ID, STF_POSN_UID, ADDITIONAL_DATA)
+                VALUES 
+                    ('SP_DC_UPDATE_INTV_LOG', 'DEBUG', @DebugMessage, GETDATE(), @DebugUserID, NULL, 
+                     CONCAT(N'删除结果JSON:', LEFT(@pResultJson, 500)));
+            END
+
 		END
 
 		IF EXISTS(SELECT 1 FROM #temp WHERE [RecordState] = 'I' AND @sStaffPositionUID IS NOT NULL)
@@ -429,8 +624,17 @@ BEGIN
         END
         ELSE
             THROW
-
     END CATCH
+
+	-- 记录存储过程完成
+	IF @DebugMode = 1
+	BEGIN
+		SET @DebugMessage = N'SP_DC_UPDATE_INTV_LOG执行完成';
+		INSERT INTO [Census].[DEBUG_LOG] 
+			(PROCEDURE_NAME, LOG_LEVEL, LOG_MESSAGE, CREATED_DATE, USER_ID, STF_POSN_UID, ADDITIONAL_DATA)
+		VALUES 
+			('SP_DC_UPDATE_INTV_LOG', 'INFO', @DebugMessage, GETDATE(), @DebugUserID, NULL, N'执行完成');
+	END
 
 	DROP TABLE IF EXISTS #tempHh
 	DROP TABLE IF EXISTS #temp
